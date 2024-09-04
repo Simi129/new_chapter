@@ -1,0 +1,6 @@
+.quest-list {
+  list-style: none;
+  padding: 0;
+  width: 100%;
+  max-width: 400px;
+}
