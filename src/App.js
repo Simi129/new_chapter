@@ -7,15 +7,37 @@ import { SDKProvider, useMainButton, useInitData, useLaunchParams } from '@teleg
 
 const tonconnect = new TonConnect();
 
+// Моковые данные для локальной разработки
+const mockLaunchParams = {
+  start_param: 'test_param'
+};
+
+const mockInitData = {
+  user: {
+    id: 123456789,
+    username: 'test_user',
+    language_code: 'en'
+  }
+};
+
 function AppContent() {
   const [walletAddress, setWalletAddress] = useState('');
   const [tokenBalance, setTokenBalance] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
-  const mainButton = useMainButton();
-  const initData = useInitData();
-  const launchParams = useLaunchParams();
+  const [isLocalDevelopment, setIsLocalDevelopment] = useState(false);
+
+  // Используем реальные данные в Telegram и моковые при локальной разработке
+  const mainButton = useMainButton(isLocalDevelopment);
+  const initData = useInitData(isLocalDevelopment ? mockInitData : undefined);
+  const launchParams = useLaunchParams(isLocalDevelopment ? mockLaunchParams : undefined);
 
   useEffect(() => {
+    // Проверяем, запущено ли приложение в среде Telegram
+    if (!window.Telegram?.WebApp) {
+      console.log('Running in local development mode');
+      setIsLocalDevelopment(true);
+    }
+
     const connectWallet = async () => {
       try {
         const { account } = await tonconnect.sendTransaction({
@@ -30,13 +52,10 @@ function AppContent() {
 
     connectWallet();
 
-    // Обработка параметра startapp
     if (launchParams.start_param) {
       console.log('App launched with start_param:', launchParams.start_param);
-      // Здесь можно добавить логику обработки start_param
     }
 
-    // Настройка MainButton
     if (mainButton) {
       mainButton.setText('Start');
       mainButton.show();
@@ -65,14 +84,12 @@ function AppContent() {
           telegramId: initData.user?.id,
           username: initData.user?.username,
           walletAddress: walletAddress,
-          // Добавьте другие необходимые поля
         }),
       });
 
       if (response.ok) {
         console.log('User successfully created');
         mainButton?.hide();
-        // Здесь можно добавить логику после успешного создания пользователя
       } else {
         console.error('Error creating user');
       }
