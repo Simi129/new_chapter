@@ -2,7 +2,7 @@ const sequelize = require('../config/database');
 const User = require('./User');
 
 const models = {
-  User
+  User: User(sequelize)
 };
 
 // Инициализация связей между моделями
