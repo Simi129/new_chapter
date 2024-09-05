@@ -11,35 +11,51 @@ function App() {
   const [tokenBalance, setTokenBalance] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [isTelegramWebAppReady, setIsTelegramWebAppReady] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const tgWebApp = window.Telegram?.WebApp;
-    if (tgWebApp) {
-      tgWebApp.ready();
-      setIsTelegramWebAppReady(true);
-    }
+    console.log('App component mounted');
+
+    const initializeTelegramWebApp = () => {
+      console.log('Initializing Telegram WebApp');
+      const tgWebApp = window.Telegram?.WebApp;
+      if (tgWebApp) {
+        console.log('Telegram WebApp found, calling ready()');
+        tgWebApp.ready();
+        setIsTelegramWebAppReady(true);
+        console.log('Telegram WebApp initialized successfully');
+
+        tgWebApp.MainButton.setText('Start');
+        tgWebApp.MainButton.show();
+        tgWebApp.MainButton.onClick(handleCreateUser);
+        console.log('MainButton set up');
+      } else {
+        console.error('Telegram WebApp not found');
+        setError('Telegram WebApp not available. Are you running this outside of Telegram?');
+      }
+    };
 
     const connectWallet = async () => {
+      console.log('Connecting wallet');
       try {
         const { account } = await tonconnect.sendTransaction({
           validUntil: Math.floor(Date.now() / 1000) + 3600,
           messages: [],
         });
         setWalletAddress(account);
+        console.log('Wallet connected:', account);
       } catch (error) {
         console.error('Error connecting wallet:', error);
+        setError(`Failed to connect wallet: ${error.message}`);
       }
     };
 
+    initializeTelegramWebApp();
     connectWallet();
 
-    if (tgWebApp) {
-      tgWebApp.MainButton.setText('Start');
-      tgWebApp.MainButton.show();
-      tgWebApp.MainButton.onClick(handleCreateUser);
-    }
-
     return () => {
+      console.log('App component unmounting');
+      const tgWebApp = window.Telegram?.WebApp;
       if (tgWebApp) {
         tgWebApp.MainButton.offClick(handleCreateUser);
       }
@@ -47,19 +63,23 @@ function App() {
   }, []);
 
   const handleCreateUser = async () => {
+    console.log('handleCreateUser called');
     const tgWebApp = window.Telegram?.WebApp;
     if (!tgWebApp) {
       console.error('Telegram WebApp is not available');
+      setError('Telegram WebApp is not available');
       return;
     }
 
     const initData = tgWebApp.initDataUnsafe;
     if (!initData || !initData.user) {
       console.error('User data is not available');
+      setError('User data is not available');
       return;
     }
 
     try {
+      console.log('Sending request to create user');
       const response = await fetch('YOUR_API_ENDPOINT/users', {
         method: 'POST',
         headers: {
@@ -77,11 +97,17 @@ function App() {
         tgWebApp.MainButton.hide();
       } else {
         console.error('Error creating user');
+        setError('Failed to create user');
       }
     } catch (error) {
       console.error('Error sending request:', error);
+      setError(`Failed to send request: ${error.message}`);
     }
   };
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
 
   return (
     <div className="app-container">
@@ -101,7 +127,7 @@ function App() {
           </div>
         </>
       ) : (
-        <div>Loading Telegram WebApp...</div>
+        <div>Loading Telegram WebApp... Please wait.</div>
       )}
     </div>
   );
