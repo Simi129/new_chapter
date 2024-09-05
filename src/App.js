@@ -4,7 +4,7 @@ import WalletInfo from './components/WalletInfo';
 import QuestList from './components/QuestList';
 import TonConnect from '@tonconnect/sdk';
 
-const tonconnect = new TonConnect({ manifestUrl: 'https://your-domain.com/tonconnect-manifest.json' });
+const tonconnect = new TonConnect({ manifestUrl: 'https://github.com/Simi129/new_chapter/tonconnect-manifest.json' });
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('');
@@ -25,9 +25,9 @@ function App() {
         setIsTelegramWebAppReady(true);
         console.log('Telegram WebApp initialized successfully');
 
-        tgWebApp.MainButton.setText('Start');
+        tgWebApp.MainButton.setText('Connect Wallet');
         tgWebApp.MainButton.show();
-        tgWebApp.MainButton.onClick(handleCreateUser);
+        tgWebApp.MainButton.onClick(connectWallet);
         console.log('MainButton set up');
       } else {
         console.error('Telegram WebApp not found');
@@ -38,12 +38,19 @@ function App() {
     const connectWallet = async () => {
       console.log('Connecting wallet');
       try {
-        const { account } = await tonconnect.sendTransaction({
-          validUntil: Math.floor(Date.now() / 1000) + 3600,
-          messages: [],
-        });
-        setWalletAddress(account);
-        console.log('Wallet connected:', account);
+        const walletConnectionSource = {
+          jsBridgeKey: 'tonkeeper',
+          universalLink: 'https://app.tonkeeper.com/ton-connect',
+        };
+        
+        await tonconnect.connect(walletConnectionSource);
+        
+        const walletInfo = await tonconnect.getWalletInfo();
+        if (walletInfo) {
+          setWalletAddress(walletInfo.address);
+          console.log('Wallet connected:', walletInfo.address);
+          // Here you can fetch the balance and update the state
+        }
       } catch (error) {
         console.error('Error connecting wallet:', error);
         setError(`Failed to connect wallet: ${error.message}`);
@@ -51,13 +58,12 @@ function App() {
     };
 
     initializeTelegramWebApp();
-    connectWallet();
 
     return () => {
       console.log('App component unmounting');
       const tgWebApp = window.Telegram?.WebApp;
       if (tgWebApp) {
-        tgWebApp.MainButton.offClick(handleCreateUser);
+        tgWebApp.MainButton.offClick(connectWallet);
       }
     };
   }, []);
