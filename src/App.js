@@ -4,7 +4,7 @@ import WalletInfo from './components/WalletInfo';
 import QuestList from './components/QuestList';
 import TonConnect from '@tonconnect/sdk';
 
-const tonconnect = new TonConnect();
+const tonconnect = new TonConnect({ manifestUrl: 'https://your-domain.com/tonconnect-manifest.json' });
 
 function App() {
   const [walletAddress, setWalletAddress] = useState('');
@@ -119,7 +119,7 @@ function App() {
           </div>
           <img className="app-image" src="ball1.png" alt="App Logo" />
           <div className="wallet-info-container">
-            <WalletInfo address={walletAddress} />
+            <WalletInfo address={walletAddress} balance={tokenBalance} />
           </div>
           <QuestList />
           <div className="referral-info">
