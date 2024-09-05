@@ -20,18 +20,23 @@ function App() {
   }, []);
 
   const initializeTelegramWebApp = () => {
-    console.log('Initializing Telegram WebApp');
-    const tgWebApp = window.Telegram?.WebApp;
-    if (tgWebApp) {
-      console.log('Telegram WebApp found, calling ready()');
+  console.log('Initializing Telegram WebApp');
+  const tgWebApp = window.Telegram?.WebApp;
+  if (tgWebApp) {
+    console.log('Telegram WebApp found, calling ready()');
+    try {
       tgWebApp.ready();
       setTgWebAppReady(true);
       console.log('Telegram WebApp initialized successfully');
-    } else {
-      console.warn('Telegram WebApp not found. Running in standalone mode.');
+    } catch (error) {
+      console.error('Error initializing Telegram WebApp:', error);
+      setError('Failed to initialize Telegram WebApp');
     }
-    setIsLoading(false);
-  };
+  } else {
+    console.warn(`Telegram WebApp not found. Make sure you're running this inside Telegram.`);
+  }
+  setIsLoading(false);
+};
 
   const connectWallet = async () => {
     console.log('Connecting wallet');
