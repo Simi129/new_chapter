@@ -3,8 +3,7 @@ import './styles/App.css';
 import WalletInfo from './components/WalletInfo';
 import QuestList from './components/QuestList';
 import TonConnect from '@tonconnect/sdk';
-import { SDKProvider, useMainButton, useInitData } from '@telegram-apps/sdk-react';
-import { createUser } from './api/userApi';
+import { SDKProvider, useMainButton, useInitData, useLaunchParams } from '@telegram-apps/sdk-react';
 
 const tonconnect = new TonConnect();
 
@@ -14,6 +13,7 @@ function AppContent() {
   const [referralCount, setReferralCount] = useState(0);
   const mainButton = useMainButton();
   const initData = useInitData();
+  const launchParams = useLaunchParams();
 
   useEffect(() => {
     const connectWallet = async () => {
@@ -30,34 +30,54 @@ function AppContent() {
 
     connectWallet();
 
-    if (mainButton && initData) {
-      mainButton.setText('Начать');
+    // Обработка параметра startapp
+    if (launchParams.start_param) {
+      console.log('App launched with start_param:', launchParams.start_param);
+      // Здесь можно добавить логику обработки start_param
+    }
+
+    // Настройка MainButton
+    if (mainButton) {
+      mainButton.setText('Start');
       mainButton.show();
-      mainButton.onClick(() => handleCreateUser(initData));
+      mainButton.onClick(handleCreateUser);
     }
 
     return () => {
       mainButton?.hide();
-      mainButton?.offClick();
+      mainButton?.offClick(handleCreateUser);
     };
-  }, [mainButton, initData]);
+  }, [mainButton, launchParams]);
 
-  const handleCreateUser = async (initData) => {
+  const handleCreateUser = async () => {
+    if (!initData) {
+      console.error('Init data is not available');
+      return;
+    }
+
     try {
-      const userData = {
-        telegramId: initData.user.id,
-        username: initData.user.username,
-        walletAddress: walletAddress,
-        // Добавьте другие необходимые поля
-      };
+      const response = await fetch('YOUR_API_ENDPOINT/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegramId: initData.user?.id,
+          username: initData.user?.username,
+          walletAddress: walletAddress,
+          // Добавьте другие необходимые поля
+        }),
+      });
 
-      await createUser(userData);
-      console.log('Пользователь успешно создан');
-      mainButton?.hide();
-      // Здесь можно добавить дополнительную логику после успешного создания пользователя
+      if (response.ok) {
+        console.log('User successfully created');
+        mainButton?.hide();
+        // Здесь можно добавить логику после успешного создания пользователя
+      } else {
+        console.error('Error creating user');
+      }
     } catch (error) {
-      console.error('Ошибка при создании пользователя:', error);
-      // Здесь можно добавить обработку ошибки, например, показать уведомление пользователю
+      console.error('Error sending request:', error);
     }
   };
 
