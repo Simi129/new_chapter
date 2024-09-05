@@ -11,6 +11,8 @@ function App() {
   const [tokenBalance, setTokenBalance] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tgWebAppReady, setTgWebAppReady] = useState(false);
 
   useEffect(() => {
     console.log('App component mounted');
@@ -18,20 +20,23 @@ function App() {
   }, []);
 
   const initializeTelegramWebApp = () => {
+    console.log('Initializing Telegram WebApp');
     const tgWebApp = window.Telegram?.WebApp;
     if (tgWebApp) {
       console.log('Telegram WebApp found, calling ready()');
       tgWebApp.ready();
+      setTgWebAppReady(true);
       console.log('Telegram WebApp initialized successfully');
     } else {
-      console.error('Telegram WebApp not found');
-      setError('Telegram WebApp not available. Are you running this inside Telegram?');
+      console.warn('Telegram WebApp not found. Running in standalone mode.');
     }
+    setIsLoading(false);
   };
 
   const connectWallet = async () => {
     console.log('Connecting wallet');
     try {
+      setIsLoading(true);
       const walletConnectionSource = {
         jsBridgeKey: 'tonkeeper',
         universalLink: 'https://app.tonkeeper.com/ton-connect',
@@ -48,6 +53,8 @@ function App() {
     } catch (error) {
       console.error('Error connecting wallet:', error);
       setError(`Failed to connect wallet: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -59,11 +66,13 @@ function App() {
       setTokenBalance(data.balance);
     } catch (error) {
       console.error('Error fetching token balance:', error);
+      setError('Failed to fetch token balance');
     }
   };
 
   const handleCreateUser = async () => {
     try {
+      setIsLoading(true);
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
@@ -78,8 +87,14 @@ function App() {
     } catch (error) {
       console.error('Error creating user:', error);
       setError('Failed to create user');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   if (error) {
     return <div className="error-message">{error}</div>;
@@ -87,6 +102,11 @@ function App() {
 
   return (
     <div className="app-container">
+      {tgWebAppReady ? (
+        <div>Telegram WebApp is ready</div>
+      ) : (
+        <div>Running in standalone mode</div>
+      )}
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
         <span className="balance-currency">TON</span>
