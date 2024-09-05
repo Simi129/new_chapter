@@ -49,11 +49,22 @@ function App() {
         if (walletInfo) {
           setWalletAddress(walletInfo.address);
           console.log('Wallet connected:', walletInfo.address);
-          // Here you can fetch the balance and update the state
+          await updateTokenBalance(walletInfo.address);
         }
       } catch (error) {
         console.error('Error connecting wallet:', error);
         setError(`Failed to connect wallet: ${error.message}`);
+      }
+    };
+
+    const updateTokenBalance = async (address) => {
+      try {
+        // Здесь должен быть запрос к вашему API для получения баланса
+        const response = await fetch(`/api/balance/${address}`);
+        const data = await response.json();
+        setTokenBalance(data.balance);
+      } catch (error) {
+        console.error('Error fetching token balance:', error);
       }
     };
 
@@ -69,45 +80,21 @@ function App() {
   }, []);
 
   const handleCreateUser = async () => {
-    console.log('handleCreateUser called');
-    const tgWebApp = window.Telegram?.WebApp;
-    if (!tgWebApp) {
-      console.error('Telegram WebApp is not available');
-      setError('Telegram WebApp is not available');
-      return;
-    }
-
-    const initData = tgWebApp.initDataUnsafe;
-    if (!initData || !initData.user) {
-      console.error('User data is not available');
-      setError('User data is not available');
-      return;
-    }
-
     try {
-      console.log('Sending request to create user');
-      const response = await fetch('YOUR_API_ENDPOINT/users', {
+      const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          telegramId: initData.user.id,
-          username: initData.user.username,
-          walletAddress: walletAddress,
-        }),
+        body: JSON.stringify({ address: walletAddress }),
       });
-
-      if (response.ok) {
-        console.log('User successfully created');
-        tgWebApp.MainButton.hide();
-      } else {
-        console.error('Error creating user');
-        setError('Failed to create user');
+      const data = await response.json();
+      if (data.referralCount) {
+        setReferralCount(data.referralCount);
       }
     } catch (error) {
-      console.error('Error sending request:', error);
-      setError(`Failed to send request: ${error.message}`);
+      console.error('Error creating user:', error);
+      setError('Failed to create user');
     }
   };
 
@@ -131,6 +118,7 @@ function App() {
           <div className="referral-info">
             Приглашено рефералов: {referralCount}
           </div>
+          <button onClick={handleCreateUser}>Create User</button>
         </>
       ) : (
         <div>Loading Telegram WebApp... Please wait.</div>
