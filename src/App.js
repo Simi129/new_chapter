@@ -12,7 +12,7 @@ function App() {
   const [referralCount, setReferralCount] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [tgWebAppReady, setTgWebAppReady] = useState(false);
+  const [tgWebApp, setTgWebApp] = useState(null);
 
   useEffect(() => {
     console.log('App component mounted');
@@ -20,23 +20,17 @@ function App() {
   }, []);
 
   const initializeTelegramWebApp = () => {
-  console.log('Initializing Telegram WebApp');
-  const tgWebApp = window.Telegram?.WebApp;
-  if (tgWebApp) {
-    console.log('Telegram WebApp found, calling ready()');
-    try {
-      tgWebApp.ready();
-      setTgWebAppReady(true);
+    console.log('Initializing Telegram WebApp');
+    if (window.Telegram && window.Telegram.WebApp) {
+      const webApp = window.Telegram.WebApp;
+      setTgWebApp(webApp);
+      webApp.ready();
       console.log('Telegram WebApp initialized successfully');
-    } catch (error) {
-      console.error('Error initializing Telegram WebApp:', error);
-      setError('Failed to initialize Telegram WebApp');
+    } else {
+      console.warn("Telegram WebApp not found. Make sure you're running this inside Telegram.");
     }
-  } else {
-    console.warn(`Telegram WebApp not found. Make sure you're running this inside Telegram.`);
-  }
-  setIsLoading(false);
-};
+    setIsLoading(false);
+  };
 
   const connectWallet = async () => {
     console.log('Connecting wallet');
@@ -107,7 +101,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {tgWebAppReady ? (
+      {tgWebApp ? (
         <div>Telegram WebApp is ready</div>
       ) : (
         <div>Running in standalone mode</div>
