@@ -1,4 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  SDKProvider, 
+  useInitData, 
+  useMainButton, 
+  useMiniApp, 
+  useBackButton,
+  useThemeParams
+} from '@telegram-apps/sdk-react';
 import './styles/App.css';
 import WalletInfo from './components/WalletInfo';
 import QuestList from './components/QuestList';
@@ -6,41 +14,55 @@ import TonConnect from '@tonconnect/sdk';
 
 const tonconnect = new TonConnect({ manifestUrl: 'https://github.com/Simi129/new_chapter/tonconnect-manifest.json' });
 
-function App() {
+function AppContent() {
   const [walletAddress, setWalletAddress] = useState('');
   const [tokenBalance, setTokenBalance] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [tgWebApp, setTgWebApp] = useState(null);
-  const [isInTelegram, setIsInTelegram] = useState(false);
+
+  const initData = useInitData();
+  const mainButton = useMainButton();
+  const miniApp = useMiniApp();
+  const backButton = useBackButton();
+  const themeParams = useThemeParams();
 
   useEffect(() => {
-    console.log('App component mounted');
-    checkEnvironment();
-  }, []);
+    if (initData) {
+      console.log('Init data:', initData);
+    }
+  }, [initData]);
 
   useEffect(() => {
-    if (tgWebApp) {
-      // Пример использования tgWebApp для изменения цвета основной кнопки
-      tgWebApp.setMainButtonColor('#FFCC00');
-      tgWebApp.setMainButtonText('Готово');
-      tgWebApp.showMainButton();
+    if (mainButton) {
+      mainButton.setText('Подключить кошелек');
+      mainButton.show();
+      mainButton.onClick(connectWallet);
     }
-  }, [tgWebApp]);
+  }, [mainButton]);
 
-  const checkEnvironment = () => {
-    if (window.Telegram && window.Telegram.WebApp) {
-      console.log('Running inside Telegram WebApp');
-      setIsInTelegram(true);
-      setTgWebApp(window.Telegram.WebApp);
-      window.Telegram.WebApp.ready();
-    } else {
-      console.log('Running in standalone mode');
-      setIsInTelegram(false);
+  useEffect(() => {
+    if (miniApp) {
+      miniApp.ready();
     }
-    setIsLoading(false);
-  };
+  }, [miniApp]);
+
+  useEffect(() => {
+    if (backButton) {
+      backButton.show();
+      backButton.onClick(() => {
+        console.log('Back button clicked');
+        // Добавьте здесь логику для обработки нажатия кнопки "Назад"
+      });
+    }
+  }, [backButton]);
+
+  useEffect(() => {
+    if (themeParams) {
+      console.log('Theme params:', themeParams);
+      // Здесь вы можете использовать themeParams для стилизации вашего приложения
+    }
+  }, [themeParams]);
 
   const connectWallet = async () => {
     console.log('Connecting wallet');
@@ -58,9 +80,9 @@ function App() {
         setWalletAddress(walletInfo.address);
         console.log('Wallet connected:', walletInfo.address);
         await updateTokenBalance(walletInfo.address);
-        if (tgWebApp) {
+        if (miniApp) {
           // Отправляем данные обратно в бота при успешном подключении кошелька
-          tgWebApp.sendData(JSON.stringify({ walletConnected: true, address: walletInfo.address }));
+          miniApp.sendData(JSON.stringify({ walletConnected: true, address: walletInfo.address }));
         }
       }
     } catch (error) {
@@ -72,41 +94,53 @@ function App() {
   };
 
   const updateTokenBalance = async (address) => {
-    try {
-      const response = await fetch(`/api/balance/${address}`);
-      const data = await response.json();
-      setTokenBalance(data.balance);
-    } catch (error) {
-      console.error('Error fetching token balance:', error);
-      setError('Failed to fetch token balance');
+  try {
+    setIsLoading(true);
+    const response = await fetch(`/api/balance/${address}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  };
+    const data = await response.json();
+    setTokenBalance(data.balance);
+  } catch (error) {
+    console.error('Error fetching token balance:', error);
+    setError('Failed to fetch token balance');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-  const handleCreateUser = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ address: walletAddress }),
-      });
-      const data = await response.json();
-      if (data.referralCount) {
-        setReferralCount(data.referralCount);
-        if (tgWebApp) {
-          // Отправляем данные о создании пользователя обратно в бота
-          tgWebApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
-        }
-      }
-    } catch (error) {
-      console.error('Error creating user:', error);
-      setError('Failed to create user');
-    } finally {
-      setIsLoading(false);
+const handleCreateUser = async () => {
+  try {
+    setIsLoading(true);
+    if (!walletAddress) {
+      throw new Error('Wallet address is not set');
     }
-  };
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ address: walletAddress }),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    if (data.referralCount) {
+      setReferralCount(data.referralCount);
+      if (miniApp) {
+        // Отправляем данные о создании пользователя обратно в бота
+        miniApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
+      }
+    }
+  } catch (error) {
+    console.error('Error creating user:', error);
+    setError('Failed to create user: ' + error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -116,13 +150,8 @@ function App() {
     return <div className="error-message">{error}</div>;
   }
 
-  return (
+     return (
     <div className="app-container">
-      {isInTelegram ? (
-        <div>Приложение запущено в Telegram</div>
-      ) : (
-        <div>Приложение запущено в автономном режиме</div>
-      )}
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
         <span className="balance-currency">TON</span>
@@ -142,6 +171,14 @@ function App() {
         <button onClick={handleCreateUser}>Create User</button>
       )}
     </div>
+  );
+}
+
+function App() {
+  return (
+    <SDKProvider acceptCustomStyles debug>
+      <AppContent />
+    </SDKProvider>
   );
 }
 
