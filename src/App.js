@@ -16,20 +16,49 @@ function App() {
 
   useEffect(() => {
     console.log('App component mounted');
-    initializeTelegramWebApp();
+    loadTelegramWebAppScript();
   }, []);
+
+  const loadTelegramWebAppScript = () => {
+    const script = document.createElement('script');
+    script.src = 'https://telegram.org/js/telegram-web-app.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('Telegram WebApp script loaded');
+      initializeTelegramWebApp();
+    };
+    script.onerror = () => {
+      console.error('Failed to load Telegram WebApp script');
+      setIsLoading(false);
+    };
+    document.body.appendChild(script);
+  };
 
   const initializeTelegramWebApp = () => {
     console.log('Initializing Telegram WebApp');
     if (window.Telegram && window.Telegram.WebApp) {
-      const webApp = window.Telegram.WebApp;
-      setTgWebApp(webApp);
-      webApp.ready();
-      console.log('Telegram WebApp initialized successfully');
+      console.log('Telegram WebApp found in window.Telegram.WebApp');
+      setTgWebApp(window.Telegram.WebApp);
+      window.Telegram.WebApp.ready();
+      setIsLoading(false);
     } else {
-      console.warn("Telegram WebApp not found. Make sure you're running this inside Telegram.");
+      let attempts = 0;
+      const maxAttempts = 10;
+      const checkInterval = setInterval(() => {
+        console.log(`Checking for Telegram WebApp (attempt ${attempts + 1})`);
+        if (window.Telegram && window.Telegram.WebApp) {
+          console.log('Telegram WebApp found after retry');
+          clearInterval(checkInterval);
+          setTgWebApp(window.Telegram.WebApp);
+          window.Telegram.WebApp.ready();
+          setIsLoading(false);
+        } else if (++attempts >= maxAttempts) {
+          console.warn("Telegram WebApp not found after multiple attempts. Make sure you're running this inside Telegram.");
+          clearInterval(checkInterval);
+          setIsLoading(false);
+        }
+      }, 500);
     }
-    setIsLoading(false);
   };
 
   const connectWallet = async () => {
