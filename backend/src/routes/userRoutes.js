@@ -1,7 +1,11 @@
 const express = require('express');
-const { createUser } = require('../controllers/userController');
+const { createOrGetUser, updateUser } = require('../controllers/userController');
 const router = express.Router();
 
-router.post('/start', createUser);
+// Маршрут для создания или получения пользователя
+router.post('/create-or-get', createOrGetUser);
+
+// Маршрут для обновления данных пользователя
+router.put('/:telegramId', updateUser);
 
 module.exports = router;

@@ -19,6 +19,7 @@ function AppContent() {
   const [referralCount, setReferralCount] = useState(0);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   const initData = useInitData();
   const miniApp = useMiniApp();
@@ -26,47 +27,62 @@ function AppContent() {
   const themeParams = useThemeParams();
 
   useEffect(() => {
-    console.log('App mounted, checking initialization...');
-    if (initData) {
-      console.log('Init data received:', initData);
-    } else {
-      console.log('Init data not available yet');
+    if (initData && miniApp) {
+      createOrGetUser(initData);
     }
-    if (miniApp) {
-      console.log('MiniApp is available');
-      miniApp.ready();
-    } else {
-      console.log('MiniApp is not available yet');
-    }
-    setIsLoading(false);
   }, [initData, miniApp]);
+
+  const createOrGetUser = async (initData) => {
+    try {
+      const response = await fetch('/api/users/create-or-get', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telegramId: initData.user.id.toString(),
+          username: initData.user.username
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setUser(data.user);
+      console.log('User created or fetched:', data.user);
+    } catch (error) {
+      console.error('Error creating or fetching user:', error);
+      setError('Failed to initialize user');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (backButton) {
-      console.log('Back button is available');
       backButton.show();
       const handleBackButtonClick = () => {
         console.log('Back button clicked');
+        // Добавьте здесь логику для обработки нажатия кнопки "Назад"
       };
       backButton.on('click', handleBackButtonClick);
       return () => {
         backButton.off('click', handleBackButtonClick);
       };
-    } else {
-      console.log('Back button is not available');
     }
   }, [backButton]);
 
   useEffect(() => {
     if (themeParams) {
-      console.log('Theme params received:', themeParams);
-    } else {
-      console.log('Theme params not available yet');
+      console.log('Theme params:', themeParams);
+      // Здесь вы можете использовать themeParams для стилизации вашего приложения
     }
   }, [themeParams]);
 
   const connectWallet = useCallback(async () => {
-    console.log('Attempting to connect wallet...');
+    console.log('Connecting wallet');
     try {
       setIsLoading(true);
       const walletConnectionSource = {
@@ -94,23 +110,23 @@ function AppContent() {
   }, [miniApp]);
 
   const updateTokenBalance = async (address) => {
-    console.log('Updating token balance for address:', address);
     try {
+      setIsLoading(true);
       const response = await fetch(`/api/balance/${address}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
       setTokenBalance(data.balance);
-      console.log('Token balance updated:', data.balance);
     } catch (error) {
       console.error('Error fetching token balance:', error);
       setError('Failed to fetch token balance');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleCreateUser = useCallback(async () => {
-    console.log('Attempting to create user...');
     try {
       setIsLoading(true);
       if (!walletAddress) {
@@ -129,7 +145,6 @@ function AppContent() {
       const data = await response.json();
       if (data.referralCount) {
         setReferralCount(data.referralCount);
-        console.log('User created, referral count:', data.referralCount);
         if (miniApp) {
           miniApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
         }
@@ -152,6 +167,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      {user && <div>Welcome, {user.username}!</div>}
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
         <span className="balance-currency">TON</span>
