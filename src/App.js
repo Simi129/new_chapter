@@ -27,23 +27,16 @@ function AppContent() {
   const backButton = useBackButton();
   const themeParams = useThemeParams();
 
-  useEffect(() => {
-    if (initData && miniApp) {
-      handleInitUser(initData);
-    }
-  }, [initData, miniApp]);
-
-  const handleInitUser = async (initData) => {
+  const handleInitUser = useCallback(async (initDataString) => {
     try {
       setIsLoading(true);
-      const userData = {
-        telegramId: initData.user.id.toString(),
-        username: initData.user.username
-      };
-      const response = await createOrGetUser(userData);
+      const response = await createOrGetUser(initDataString);
       setUser(response.user);
       setTokenBalance(response.user.totalCoins || 0);
       setReferralCount(response.user.referralCount || 0);
+      if (response.user.walletAddress) {
+        setWalletAddress(response.user.walletAddress);
+      }
       console.log('User created or fetched:', response.user);
     } catch (error) {
       console.error('Error initializing user:', error);
@@ -51,7 +44,13 @@ function AppContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initData && miniApp) {
+      handleInitUser(initData);
+    }
+  }, [initData, miniApp, handleInitUser]);
 
   const connectWallet = useCallback(async () => {
     console.log('Connecting wallet');
@@ -70,7 +69,6 @@ function AppContent() {
         console.log('Wallet connected:', walletInfo.address);
         
         if (user) {
-          // Обновляем информацию о кошельке пользователя на сервере
           await updateUserWallet(user.telegramId, walletInfo.address);
         }
         
@@ -91,7 +89,7 @@ function AppContent() {
       backButton.show();
       const handleBackButtonClick = () => {
         console.log('Back button clicked');
-        // Добавьте здесь логику для обработки нажатия кнопки "Назад"
+        // Логика обработки нажатия кнопки "Назад"
       };
       backButton.on('click', handleBackButtonClick);
       return () => {
@@ -103,12 +101,14 @@ function AppContent() {
   useEffect(() => {
     if (themeParams) {
       console.log('Theme params:', themeParams);
-      // Здесь вы можете использовать themeParams для стилизации вашего приложения
+      // Применение themeParams для стилизации приложения
+      document.documentElement.style.setProperty('--tg-theme-bg-color', themeParams.bg_color);
+      document.documentElement.style.setProperty('--tg-theme-text-color', themeParams.text_color);
     }
   }, [themeParams]);
 
   if (isLoading) {
-    return <div>Loading... Please wait.</div>;
+    return <div className="loading">Loading... Please wait.</div>;
   }
 
   if (error) {
@@ -117,7 +117,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      {user && <div>Welcome, {user.username}!</div>}
+      {user && <div className="welcome-message">Welcome, {user.username}!</div>}
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
         <span className="balance-currency">TON</span>
@@ -131,7 +131,7 @@ function AppContent() {
         Приглашено рефералов: {referralCount}
       </div>
       {!walletAddress && (
-        <button onClick={connectWallet}>Подключить кошелек</button>
+        <button className="connect-wallet-button" onClick={connectWallet}>Подключить кошелек</button>
       )}
     </div>
   );

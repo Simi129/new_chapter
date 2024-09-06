@@ -1,35 +1,57 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const crypto = require('crypto');
 const { sequelize } = require('./src/models');
 const userRoutes = require('./src/routes/userRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Настройка CORS
 app.use(cors({
-  origin: ['https://simi129.github.io', 'http://localhost:3000' , 'https://1349-78-84-19-24.ngrok-free.app'], // Добавьте все нужные домены
+  origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-bot-token']
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(express.json());
 
-// Middleware для проверки токена бота
-const checkBotToken = (req, res, next) => {
-  const botToken = req.headers['x-telegram-bot-token'];
-  if (botToken !== process.env.TELEGRAM_BOT_TOKEN) {
-    return res.status(401).json({ message: 'Неавторизованный запрос' });
+// Функция для проверки данных инициализации Telegram
+function verifyTelegramWebAppData(initData) {
+  const secret = crypto.createHmac('sha256', 'WebAppData').update(process.env.TELEGRAM_BOT_TOKEN);
+  const secretKey = secret.digest();
+  
+  const hash = initData.hash;
+  delete initData.hash;
+  
+  const checkString = Object.keys(initData)
+    .sort()
+    .map(k => `${k}=${initData[k]}`)
+    .join('\n');
+  
+  const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+  
+  return hmac === hash;
+}
+
+// Middleware для проверки данных Telegram
+const checkTelegramAuth = (req, res, next) => {
+  const initData = req.body.initData || req.query.initData;
+  if (!initData) {
+    return res.status(401).json({ message: 'Отсутствуют данные инициализации Telegram' });
   }
+
+  const parsedInitData = Object.fromEntries(new URLSearchParams(initData));
+  
+  if (!verifyTelegramWebAppData(parsedInitData)) {
+    return res.status(401).json({ message: 'Неверные данные инициализации Telegram' });
+  }
+  
+  req.telegramUser = JSON.parse(parsedInitData.user);
   next();
 };
 
-// Применяем middleware checkBotToken только к маршрутам /api/users
-app.use('/api/users', checkBotToken, userRoutes);
-
-// Обработка префлайт-запросов для всех маршрутов
-app.options('*', cors());
+app.use('/api/users', checkTelegramAuth, userRoutes);
 
 sequelize.sync({ force: false })
   .then(() => {
