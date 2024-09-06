@@ -13,52 +13,33 @@ function App() {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [tgWebApp, setTgWebApp] = useState(null);
+  const [isInTelegram, setIsInTelegram] = useState(false);
 
   useEffect(() => {
     console.log('App component mounted');
-    loadTelegramWebAppScript();
+    checkEnvironment();
   }, []);
 
-  const loadTelegramWebAppScript = () => {
-    const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-web-app.js';
-    script.async = true;
-    script.onload = () => {
-      console.log('Telegram WebApp script loaded');
-      initializeTelegramWebApp();
-    };
-    script.onerror = () => {
-      console.error('Failed to load Telegram WebApp script');
-      setIsLoading(false);
-    };
-    document.body.appendChild(script);
-  };
+  useEffect(() => {
+    if (tgWebApp) {
+      // Пример использования tgWebApp для изменения цвета основной кнопки
+      tgWebApp.setMainButtonColor('#FFCC00');
+      tgWebApp.setMainButtonText('Готово');
+      tgWebApp.showMainButton();
+    }
+  }, [tgWebApp]);
 
-  const initializeTelegramWebApp = () => {
-    console.log('Initializing Telegram WebApp');
+  const checkEnvironment = () => {
     if (window.Telegram && window.Telegram.WebApp) {
-      console.log('Telegram WebApp found in window.Telegram.WebApp');
+      console.log('Running inside Telegram WebApp');
+      setIsInTelegram(true);
       setTgWebApp(window.Telegram.WebApp);
       window.Telegram.WebApp.ready();
-      setIsLoading(false);
     } else {
-      let attempts = 0;
-      const maxAttempts = 10;
-      const checkInterval = setInterval(() => {
-        console.log(`Checking for Telegram WebApp (attempt ${attempts + 1})`);
-        if (window.Telegram && window.Telegram.WebApp) {
-          console.log('Telegram WebApp found after retry');
-          clearInterval(checkInterval);
-          setTgWebApp(window.Telegram.WebApp);
-          window.Telegram.WebApp.ready();
-          setIsLoading(false);
-        } else if (++attempts >= maxAttempts) {
-          console.warn("Telegram WebApp not found after multiple attempts. Make sure you're running this inside Telegram.");
-          clearInterval(checkInterval);
-          setIsLoading(false);
-        }
-      }, 500);
+      console.log('Running in standalone mode');
+      setIsInTelegram(false);
     }
+    setIsLoading(false);
   };
 
   const connectWallet = async () => {
@@ -77,6 +58,10 @@ function App() {
         setWalletAddress(walletInfo.address);
         console.log('Wallet connected:', walletInfo.address);
         await updateTokenBalance(walletInfo.address);
+        if (tgWebApp) {
+          // Отправляем данные обратно в бота при успешном подключении кошелька
+          tgWebApp.sendData(JSON.stringify({ walletConnected: true, address: walletInfo.address }));
+        }
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
@@ -88,7 +73,6 @@ function App() {
 
   const updateTokenBalance = async (address) => {
     try {
-      // Здесь должен быть запрос к вашему API для получения баланса
       const response = await fetch(`/api/balance/${address}`);
       const data = await response.json();
       setTokenBalance(data.balance);
@@ -111,6 +95,10 @@ function App() {
       const data = await response.json();
       if (data.referralCount) {
         setReferralCount(data.referralCount);
+        if (tgWebApp) {
+          // Отправляем данные о создании пользователя обратно в бота
+          tgWebApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
+        }
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -130,10 +118,10 @@ function App() {
 
   return (
     <div className="app-container">
-      {tgWebApp ? (
-        <div>Telegram WebApp is ready</div>
+      {isInTelegram ? (
+        <div>Приложение запущено в Telegram</div>
       ) : (
-        <div>Running in standalone mode</div>
+        <div>Приложение запущено в автономном режиме</div>
       )}
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
