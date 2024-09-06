@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   SDKProvider, 
   useInitData, 
@@ -54,7 +54,7 @@ function AppContent() {
     }
   }, [themeParams]);
 
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     console.log('Connecting wallet');
     try {
       setIsLoading(true);
@@ -80,7 +80,7 @@ function AppContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [miniApp]);
 
   const updateTokenBalance = async (address) => {
     try {
@@ -99,7 +99,7 @@ function AppContent() {
     }
   };
 
-  const handleCreateUser = async () => {
+  const handleCreateUser = useCallback(async () => {
     try {
       setIsLoading(true);
       if (!walletAddress) {
@@ -128,7 +128,7 @@ function AppContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [walletAddress, miniApp]);
 
   if (isLoading) {
     return <div>Loading...</div>;
