@@ -28,6 +28,13 @@ function AppContent() {
   const themeParams = useThemeParams();
 
   const handleInitUser = useCallback(async (initDataString) => {
+    if (!initDataString) {
+      console.error('InitData is undefined');
+      setError('Failed to initialize: Missing initialization data');
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       const response = await createOrGetUser(initDataString);
@@ -40,15 +47,22 @@ function AppContent() {
       console.log('User created or fetched:', response.user);
     } catch (error) {
       console.error('Error initializing user:', error);
-      setError('Failed to initialize user');
+      setError('Failed to initialize user: ' + error.message);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (initData && miniApp) {
+    if (miniApp) {
+      miniApp.ready();
+    }
+    
+    if (initData) {
       handleInitUser(initData);
+    } else {
+      console.warn('InitData is not available. Running in standalone mode or waiting for data.');
+      setIsLoading(false);
     }
   }, [initData, miniApp, handleInitUser]);
 
