@@ -37,7 +37,9 @@ function AppContent() {
     if (mainButton) {
       mainButton.setText('Подключить кошелек');
       mainButton.show();
-      mainButton.onClick(connectWallet);
+      mainButton.onClick(() => {
+        connectWallet();
+      });
     }
   }, [mainButton]);
 
@@ -81,7 +83,6 @@ function AppContent() {
         console.log('Wallet connected:', walletInfo.address);
         await updateTokenBalance(walletInfo.address);
         if (miniApp) {
-          // Отправляем данные обратно в бота при успешном подключении кошелька
           miniApp.sendData(JSON.stringify({ walletConnected: true, address: walletInfo.address }));
         }
       }
@@ -94,53 +95,52 @@ function AppContent() {
   };
 
   const updateTokenBalance = async (address) => {
-  try {
-    setIsLoading(true);
-    const response = await fetch(`/api/balance/${address}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    setTokenBalance(data.balance);
-  } catch (error) {
-    console.error('Error fetching token balance:', error);
-    setError('Failed to fetch token balance');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const handleCreateUser = async () => {
-  try {
-    setIsLoading(true);
-    if (!walletAddress) {
-      throw new Error('Wallet address is not set');
-    }
-    const response = await fetch('/api/users', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ address: walletAddress }),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const data = await response.json();
-    if (data.referralCount) {
-      setReferralCount(data.referralCount);
-      if (miniApp) {
-        // Отправляем данные о создании пользователя обратно в бота
-        miniApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
+    try {
+      setIsLoading(true);
+      const response = await fetch(`/api/balance/${address}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      const data = await response.json();
+      setTokenBalance(data.balance);
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      setError('Failed to fetch token balance');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Error creating user:', error);
-    setError('Failed to create user: ' + error.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
+
+  const handleCreateUser = async () => {
+    try {
+      setIsLoading(true);
+      if (!walletAddress) {
+        throw new Error('Wallet address is not set');
+      }
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ address: walletAddress }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      if (data.referralCount) {
+        setReferralCount(data.referralCount);
+        if (miniApp) {
+          miniApp.sendData(JSON.stringify({ userCreated: true, referralCount: data.referralCount }));
+        }
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setError('Failed to create user: ' + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -150,7 +150,7 @@ const handleCreateUser = async () => {
     return <div className="error-message">{error}</div>;
   }
 
-     return (
+  return (
     <div className="app-container">
       <div className="total-balance">
         <span className="balance-value">{tokenBalance}</span>
