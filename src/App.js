@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   SDKProvider, 
   useInitData, 
-  useMainButton, 
   useMiniApp, 
   useBackButton,
   useThemeParams
@@ -22,7 +21,6 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   const initData = useInitData();
-  const mainButton = useMainButton();
   const miniApp = useMiniApp();
   const backButton = useBackButton();
   const themeParams = useThemeParams();
@@ -32,16 +30,6 @@ function AppContent() {
       console.log('Init data:', initData);
     }
   }, [initData]);
-
-  useEffect(() => {
-    if (mainButton) {
-      mainButton.setText('Подключить кошелек');
-      mainButton.show();
-      mainButton.onClick(() => {
-        connectWallet();
-      });
-    }
-  }, [mainButton]);
 
   useEffect(() => {
     if (miniApp) {
