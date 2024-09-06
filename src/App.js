@@ -40,10 +40,16 @@ function AppContent() {
   useEffect(() => {
     if (backButton) {
       backButton.show();
-      backButton.onClick(() => {
+      const handleBackButtonClick = () => {
         console.log('Back button clicked');
         // Добавьте здесь логику для обработки нажатия кнопки "Назад"
-      });
+      };
+      
+      backButton.on('click', handleBackButtonClick);
+      
+      return () => {
+        backButton.off('click', handleBackButtonClick);
+      };
     }
   }, [backButton]);
 
